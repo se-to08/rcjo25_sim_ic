@@ -68,8 +68,8 @@ def main(args=None):
     tf_listener2_node_for_debug = TfListener2NodeForDebug()
     try:
         while rclpy.ok():
-            # tf_listener2_node_for_debug.get_tf("person", "map")
-            tf_listener2_node_for_debug.get_tf("person", "base_footprint")
+            tf_listener2_node_for_debug.get_tf("person", "map")
+            # tf_listener2_node_for_debug.get_tf("person", "base_footprint")
             time.sleep(1.0)
     except KeyboardInterrupt:
         pass

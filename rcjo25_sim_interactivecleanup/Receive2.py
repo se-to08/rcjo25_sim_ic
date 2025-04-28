@@ -2,8 +2,8 @@
 # -*- coding:utf-8 -*-
 
 import rclpy
+import asyncio
 from rclpy.node import Node
-import time
 from geometry_msgs.msg import Point
 from rcjo25_sim_interactivecleanup.element.tf_listener2_for_debug import TfListener2NodeForDebug
 from rcjo25_sim_interactivecleanup.element.task_common import TaskCommon
@@ -28,7 +28,7 @@ class Receive(Node):
         self.pointing_direction_node = PointingDirectionEstimator()
         self.change_pose_node = MoveToPoseClient()
 
-    def execute(self):
+    async def execute(self):
         self.get_logger().info("11111111111111111111111111111111111111111111111111111111")
         self.get_logger().info("person フレーム")
         self.Initial_Position = self.tf_listener2_for_debug_node.get_tf("person", "map")
@@ -52,21 +52,12 @@ class Receive(Node):
                 self.get_logger().info("Waiting for message...")
 
             rclpy.spin_once(self.task_common_node)
-            time.sleep(0.5)  # メッセージのチェック間隔を調整
+            await asyncio.sleep(0.5)  # メッセージのチェック間隔を調整
 
         self.get_logger().info("33333333333333333333333333333333333333333333333333333333")
         self.get_logger().info("指差し認識開始１")
         for receive_challenge in range(self.Receive_Challenge_Times):
-
-            # if task_commom.get_task_failed_state() == True:
-            # 	Next_State = "time_is_up"	
-            # 	return 'finish'
-
-            self.change_pose_node.change_pose('initial_pose') #pose変える
-
-            # if task_commom.get_task_failed_state() == True:
-            # 	Next_State = "time_is_up"
-            # 	return 'finish'
+            self.change_pose_node.change_pose('initial_pose')  # poseを変更
 
             self.task_common_node.wait_pick_it_up_command()  # 命令待機
             rclpy.spin_once(self.task_common_node)  # コールバックを処理
@@ -74,62 +65,60 @@ class Receive(Node):
             self.Pointing_Position1 = self.tf_listener2_for_debug_node.get_tf("person", "map")
             print(self.Pointing_Position1)
 
-            time.sleep(5.0)
+            await asyncio.sleep(5.0)
 
             if self.Pointing_Position1 == Point():
-                time.sleep(1.0)
+                await asyncio.sleep(1.0)
                 self.Pointing_Position1 = self.tf_listener2_for_debug_node.get_tf("person", "map")
             print("POINTING_POSITION1")
             print(self.Pointing_Position1)
             self.Object_Area = self.person_region_estimator_node.search_person_region(self.Pointing_Position1, self.Initial_Position)
-            print("Object_Area:",self.Object_Area)
+            print("Object_Area:", self.Object_Area)
 
-            time.sleep(1.0)
+            await asyncio.sleep(1.0)
 
-            ######指差し認識
+            # 指差し開始
             print("指差し開始")
 
             self.Pointing_Direction1 = self.pointing_direction_node.pointing_direction()
-            # if Pointing_Direction1 == "FAILURE":
-            # 	Next_State = "time_is_up"
-            # 	return 'finish'
-
             self.task_common_node.wait_clean_up_command()
 
             self.Pointing_Position2 = self.tf_listener2_for_debug_node.get_tf("person", "map")
             print(self.Pointing_Position2)
-            time.sleep(2.0)
+            await asyncio.sleep(2.0)
 
             self.Pointing_Position2 = self.tf_listener2_for_debug_node.get_tf("person", "map")
             print(self.Pointing_Position2)
-            time.sleep(5.0)
+            await asyncio.sleep(5.0)
 
             if self.Pointing_Position2 == Point():
-                time.sleep(1.5)
+                await asyncio.sleep(1.5)
                 self.Pointing_Position2 = self.tf_listener2_for_debug_node.get_tf("person", "map")
             print("POINTING_POSITION2")
             print(self.Pointing_Position2)
-            time.sleep(2.0)
+            await asyncio.sleep(2.0)
 
             if self.Pointing_Position2 == Point():
-                time.sleep(1.5)
+                await asyncio.sleep(1.5)
                 self.Pointing_Position2 = self.tf_listener2_for_debug_node.get_tf("person", "map")
             print("POINTING_POSITION2")
             print(self.Pointing_Position2)
-            time.sleep(2.0)
+            await asyncio.sleep(2.0)
 
             self.Pointing_Direction2 = self.pointing_direction_node.pointing_direction()
-            # if Pointing_Direction1 == "FAILURE":
-            # 	Next_State = "time_is_up"
-            # 	return 'finish'
             
+            # 次のステップへ
             # Next_State = 'search'
             # return 'finish'
 
 def main():
     rclpy.init()
     node = Receive()
-    node.execute()
+
+    # 非同期実行
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(node.execute())
+
     rclpy.shutdown()
 
 if __name__ == '__main__':

@@ -33,32 +33,32 @@ class PointingDirectionEstimator(Node):
         base_footprint_frame = "base_footprint"
 
         try:
-            # /person から /right_shoulder への変換を取得
-            transform_r_sho = self.tf_buffer.lookup_transform(
-                person_frame,
-                right_shoulder_frame,
-                rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.3)  # 短めのタイムアウト
-            )
-            trans_r_sho = [transform_r_sho.transform.translation.x,
-                             transform_r_sho.transform.translation.y,
-                             transform_r_sho.transform.translation.z]
+            # KeyPointArray メッセージから対応する key_names と key_points を取得
+            key_names = msg.key_points_array[0].key_names
+            key_points = msg.key_points_array[0].key_points
 
-            # /person から /right_wrist への変換を取得
-            transform_r_wri = self.tf_buffer.lookup_transform(
-                person_frame,
-                right_wrist_frame,
-                rclpy.time.Time(),
-                timeout=rclpy.duration.Duration(seconds=0.3)  # 短めのタイムアウト
-            )
-            trans_r_wri = [transform_r_wri.transform.translation.x,
-                             transform_r_wri.transform.translation.y,
-                             transform_r_wri.transform.translation.z]
+            # 'right_shoulder' の位置を取得
+            if "right_shoulder" in key_names:
+                idx = key_names.index("right_shoulder")
+                right_shoulder = key_points[idx]
+                right_shoulder_pos = [right_shoulder.x, right_shoulder.y, right_shoulder.z]
+            else:
+                self.get_logger().warn("Right shoulder keypoint not found")
+                return
+
+            # 'right_wrist' の位置を取得
+            if "right_wrist" in key_names:
+                idx = key_names.index("right_wrist")
+                right_wrist = key_points[idx]
+                right_wrist_pos = [right_wrist.x, right_wrist.y, right_wrist.z]
+            else:
+                self.get_logger().warn("Right wrist keypoint not found")
+                return
 
             # 相対ベクトルを計算
-            trans_r_relative = [trans_r_sho[0] - trans_r_wri[0],
-                                trans_r_sho[1] - trans_r_wri[1],
-                                trans_r_sho[2] - trans_r_wri[2]]
+            trans_r_relative = [right_shoulder_pos[0] - right_wrist_pos[0],
+                                right_shoulder_pos[1] - right_wrist_pos[1],
+                                right_shoulder_pos[2] - right_wrist_pos[2]]
 
             # 水平方向の角度を計算
             r_angle_rad = math.atan2(trans_r_relative[1], trans_r_relative[0])
